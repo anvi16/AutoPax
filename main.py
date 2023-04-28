@@ -7,7 +7,7 @@ import threading
 
 # Set up serial
 serial_port = Serial('COM3')  # COMxx   format on Windows
-# ttyUSBx format on Linux
+                              # ttyUSBx format on Linux
 
 serial_port.baudrate = 115200  # set Baud rate to 115200
 serial_port.bytesize = 8  # Number of data bits = 8
@@ -47,12 +47,11 @@ class SerialReaderProtocolRaw(Protocol):
 
     def data_received(self, data):
         """Called with snippets received from the serial port"""
-        # Add incoming snippets to buffer and make sure format is 4-bits (0000)
-        self.buffer.extend(data.zfill(4))
-        if len(self.buffer) == 8:
-            # Send 1 byte data to packet handler
-            packet = self.buffer
-            listener_serial(packet)
+        # Ignore zero bits data
+        if not data == b'0':
+            # Add incoming snippets to buffer and make sure format is 8-bits
+            self.buffer.extend(data.zfill(8))
+            listener_serial(self.buffer)
             del self.buffer[:]
 
 
@@ -81,7 +80,7 @@ def encode_SAMr34_UART(arg1, arg2, arg3):
 
 
 def decode_SAMr34_UART(data):
-    # Make sure bitstream is 8bit
+    # Make sure data is 8bit
     data = data.zfill(8)
 
     # Packet struct:
@@ -133,7 +132,7 @@ def listener_serial(data):
     # Decode data
     REID, SEID, STATE = decode_SAMr34_UART(data)
 
-    # Send to io-machine
+    # Send to I/O-machine
     data_string = "AUTOPAX,{},{},{}".format(REID, SEID, STATE)
     # data_string = "WAGOHATCHFB,0,1,2,0,0,2,2,0,0"
 
@@ -158,6 +157,7 @@ if __name__ == '__main__':
 
     # encode_SAMr34_UART(0x1,0x2,0x3)
     # decode_SAMr34_UART(b'100011')
+    # serial_port.write(b'01110010')
 
     # Start listening to UDP stream from I/O-machine
 
@@ -187,7 +187,7 @@ if __name__ == '__main__':
             print(e)
 
         else:
-            # Checksum are ok
+            # Checksum ok
             print("Checksums are {} and {}".format(cksum, cksum_calc))
 
             # Send to terminal
@@ -195,8 +195,7 @@ if __name__ == '__main__':
 
             bitstream = encode_SAMr34_UART(receiver_id, sender_id, req)
 
-            # serial_port.write(bitstream)  # transmit (8bit) to SAM R34
-            serial_port.write(b'01110010')  # transmit (8bit) to SAM R34
+            serial_port.write(bitstream)  # transmit (8bit) to SAM R34
 
             # Do something useful
 
