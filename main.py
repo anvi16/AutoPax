@@ -2,7 +2,7 @@ import socket
 import re
 import bitarray
 from serial import Serial
-from serial.threaded import ReaderThread, Protocol, FramedPacket, Packetizer
+from serial.threaded import ReaderThread, Protocol
 import threading
 
 # Set up serial
@@ -22,7 +22,6 @@ UDP_PORT_TX = 2020
 UDP_PORT_RX = 2021
 MESSAGE = b"$WAGOHATCHFB,0,1,2,0,0,2,2,0,0*53"
 
-
 sock_rx = socket.socket(socket.AF_INET,  # Internet
                         socket.SOCK_DGRAM)  # UDP
 
@@ -31,6 +30,7 @@ sock_tx = socket.socket(socket.AF_INET,  # Internet
 
 sock_rx.bind((UDP_IP, UDP_PORT_RX))
 
+
 # ----------------------------------------------- #
 
 
@@ -38,8 +38,6 @@ sock_rx.bind((UDP_IP, UDP_PORT_RX))
 
 # Kilde https://stackoverflow.com/questions/70625801/threading-reading-a-serial-port-in-python-with-a-gui
 class SerialReaderProtocolRaw(Protocol):
-    port = None
-
     def __init__(self):
         self.buffer = bytearray()
 
@@ -49,14 +47,13 @@ class SerialReaderProtocolRaw(Protocol):
 
     def data_received(self, data):
         """Called with snippets received from the serial port"""
-        self.buffer.extend(data)
-        if len(self.buffer) == len(bytes(1)):
+        # Add incoming snippets to buffer and make sure format is 4-bits (0000)
+        self.buffer.extend(data.zfill(4))
+        if len(self.buffer) == 8:
+            # Send 1 byte data to packet handler
             packet = self.buffer
-            self.handle_packet(packet)
-
-    def handle_packet(self, packet):
-        """Process packets - to be overridden by subclassing"""
-        listener_serial(packet)
+            listener_serial(packet)
+            del self.buffer[:]
 
 
 # https://code.activestate.com/recipes/576789-nmea-sentence-checksum/
@@ -116,6 +113,9 @@ def decode_NMEA_payload(payload_str):
     return ID, int(REID, 16), int(SEID, 16), int(DATA, 16)
 
 
+# ----------------------------------------------- #
+
+
 # Response function for serial data
 
 # Receive bitstream from serial port
@@ -154,10 +154,10 @@ if __name__ == '__main__':
     reader = ReaderThread(serial_port, SerialReaderProtocolRaw)
     reader.start()
 
-    #listener_serial(b"D")
+    # listener_serial(b"D")
 
-    #encode_SAMr34_UART(0x1,0x2,0x3)
-    #decode_SAMr34_UART(b'100011')
+    # encode_SAMr34_UART(0x1,0x2,0x3)
+    # decode_SAMr34_UART(b'100011')
 
     # Start listening to UDP stream from I/O-machine
 
@@ -191,14 +191,14 @@ if __name__ == '__main__':
             print("Checksums are {} and {}".format(cksum, cksum_calc))
 
             # Send to terminal
-            tag, REID, SEID, REQ = decode_NMEA_payload(NMEA_payload)
+            tag, receiver_id, sender_id, req = decode_NMEA_payload(NMEA_payload)
 
-            bitstream = encode_SAMr34_UART(REID, SEID, REQ)
+            bitstream = encode_SAMr34_UART(receiver_id, sender_id, req)
 
-            #serial_port.write(bitstream)  # transmit (8bit) to SAM R34
+            # serial_port.write(bitstream)  # transmit (8bit) to SAM R34
             serial_port.write(b'01110010')  # transmit (8bit) to SAM R34
-        
+
             # Do something useful
 
-
-serial_port.close()  # Close the port
+    reader.stop()
+    serial_port.close()  # Close the port
