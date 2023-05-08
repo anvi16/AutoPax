@@ -7,19 +7,19 @@ import threading
 serial_port = Serial('COM5')  # COMxx   format on Windows
                               # ttyUSBx format on Linux
 
-serial_port.baudrate = 115200  # set Baud rate to 115200
-serial_port.bytesize = 8  # Number of data bits = 8
-serial_port.parity = 'N'  # No parity
-serial_port.stopbits = 1  # Number of Stop bits = 1
+serial_port.baudrate = 115200   # set Baud rate to 115200
+serial_port.bytesize = 8        # Number of data bits = 8
+serial_port.parity = 'N'        # No parity
+serial_port.stopbits = 1        # Number of Stop bits = 1
 serial_port.timeout = 1
 
 # ----------------------------------------------- #
 
 # Set up UDP
-UDP_IP = "127.0.0.1"
-UDP_PORT_TX = 2020
-UDP_PORT_RX = 2021
-MESSAGE = b"$WAGOHATCHFB,0,1,2,0,0,2,2,0,0*53"
+UDP_IP = "192.168.0.101"
+UDP_PORT_TX = 2021
+UDP_PORT_RX = 2022
+# MESSAGE = b"$WAGOHATCHFB,0,1,2,0,0,2,2,0,0*53"
 
 sock_rx = socket.socket(socket.AF_INET,  # Internet
                         socket.SOCK_DGRAM)  # UDP
